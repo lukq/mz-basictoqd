@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<title>BASIC to QD</title>
+<style>p{width:458pt} a{color:#00e}</style>
+<b>BASIC source code to QD file convertor</b><p>
+<textarea id=tx cols=80 rows=16>
+1 REM BINARY ADDITION EXAMPLE
+2 A=341:B=342:C=A+B
+3 F.I=1TO3:?:?MI.(" +=",I,1);:A=A/512
+4 F.J=0TO9:?A AND1;:A=A*2:N.:A=B:B=C
+5 N.
+</textarea><br>
+Emulator: <select style=margin-right:6pt>
+<option id=ez>EmuZ-800 QD
+<option id=cmt>EmuZ-800 CMT
+<option>mz800emu QD
+<option id=wav>Audio, wav</select>
+Name: <input id=nm value=B style=margin-top:3pt>
+<button id=sav onclick="var b=getBlob();b&&navigator.msSaveBlob(b,fname())"
+>Save</button>
+
+<pre id=err style=margin-bottom:14pt></pre>
+<p>Write a BASIC source code in the text area above. This tool will create
+a Quick Disk image file or a cassette tape file to be loaded into a Sharp MZ-800
+computer emulator. Emulators EmuZ-800 and mz800emu are supported.
+<p>Use escape codes to input special characters, e.g. \xff is the symbol pi.
+<p>In the emulator, first load the BASIC interpreter then mount the generated
+QD image and load the source code using the statement on the first line (in case
+of CMT use the statement on the second line):
+<pre>
+LOAD"QD:B",A
+LOAD"CMT:",A
+</pre>
+
+<script>
+// BASIC to QD and CMT, version 0.4
+// by Lukas Petru, March 2018
+
+// Open source under the MIT License (Expat).
+
+navigator.msSaveBlob?0:sav.outerHTML=
+ `<a id=sav onclick=return(link()) oncontextmenu=link()>[Save]</a>`
+link=b=>(sav.download=fname(),URL.revokeObjectURL(sav.href),
+ sav.href=(b=getBlob())?URL.createObjectURL(b):"#",!!b)
+
+fname=_=>nm.value.slice(0,16).replace(/[^\w !#-,@^`{-~-]/g,"!")+
+ (wav.selected?".wav":cmt.selected?".mzt":ez.selected?".qdf":".mzq")
+gname=n=>(n=nm.value.replace(/[^\w !#-,@^-]/g,"").slice(0,16).toUpperCase(),
+ n=n||"B",n+"\r"+" ".repeat(16)).slice(0,17)
+text=t=>(
+ t=tx.value.replace(/\\x[\da-f]{2}/g,x=>eval(`"${x}"`)).split("\n")
+ .map(x=>(x=x.trim(),x.length>255?err.textContent+=x+"\n  Line too long error\n":0,
+ x&&x.replace(/\$[\dA-F]+|[\d ]*/,a=>(
+  a=+(a[0]=="$"?"0x"+a.slice(1):a).replace(/ /g,""),a<1||a>65535?err.textContent+=x+
+  "\n  Wrong line number\n":0)),
+ x.replace(/[a-z]/g,x=>String.fromCharCode(146+
+  "e   tgh bxdrpcqazwsui  kfv   jn  m   ol    y".indexOf(x)))))
+ .filter(x=>x).join("\r")+"\r\r",
+ t.length>33000?err.textContent="File too large error":0,
+ t)
+filePart=(t,o,b)=>new Uint8Array([255,255-(o+b<t.length),
+  ...[...t.slice(o,o+b)].map(y=>y.charCodeAt(0))])
+getBlocks=(t,b,qb,qe,o,r)=>{
+ t+="\0".repeat((b-t.length%b)%b),r=[]
+ for(o=0;o<t.length;o+=b)r.push(qb,filePart(t,o,b),qe); return r}
+getQdHdr=_=>sb+" \x02@\0\x03"+gname()+"\0".repeat(46)+se
+getQdDt=t=>getBlocks(t,1024,sb+" \x01\x02\x04",se)
+getQd=(t,d)=>(sb="\0\x16\x16",se="CRC",ez.selected?(sb="\x16".repeat(4),
+ se="CR"+sb+"\0"):0,d=getQdDt(t),
+ [ez.selected?"-QD format-     ":"",sb,(new Int8Array([0,1+d.length/3])),se,
+  getQdHdr(),...d])
+getCmt=t=>getBlocks(t,256,"\x04"+gname()+"\x02\x01"+"\0".repeat(108),"")
+
+sina=n=>[...Array(n)].map((_,i)=>Math.sin(Math.PI*2/n*i)*127.5+128.5)
+s0=new Int8Array(sina(15)),s1=new Int8Array(sina(33))
+popcnt=x=>x?(x>>2&1)+(x>>1&1)+(x&1)+popcnt(x>>3):x
+encBlock=(n,b,c)=>(c=b.reduce((x,y)=>x+popcnt(y),0),
+ "1".repeat(n)+"0".repeat(n+1)+"1"+[...b,c>>8,c&255]
+ .map(x=>("0000000"+x.toString(2)).slice(-8)+"0").join(""))
+wavHdr=_=>("0".repeat(800)+encBlock(40,[...("\x04"+gname()+"\0".repeat(110))]
+ .map(x=>x.charCodeAt(0))))
+wavBlocks=t=>getBlocks(t,256,0,0).filter(x=>x)
+ .map(x=>"0".repeat(11950)+encBlock(20,x)).join("")
+getWavDt=t=>new Blob((wavHdr()+wavBlocks(t)).split("").map(x=>x=="0"?s0:s1))
+uint32=n=>+n?new Int8Array([n&255,n>>8&255,n>>16&255,n>>24]):n
+getWav=(t,d)=>["RIFF",36+(d=getWavDt(t)).size,"WAVE","fmt ",16,1<<16|1,
+ 32000,32000,8<<16|1,"data",d.size].map(uint32).concat(d)
+
+getBlob=t=>(err.textContent="",t=text(),err.textContent?0:new Blob(
+ wav.selected?getWav(t):cmt.selected?getCmt(t):getQd(t)))
+</script>

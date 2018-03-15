@@ -1,0 +1,149 @@
+How Z80 SIO is used for QD data transmission
+
+Port addresses
+
+0F4H Channel A data
+0F5H Channel B data
+0F6H Channel A control
+0F7H Channel B control
+
+Initialisation before read
+
+  LD HL,INITSIO
+  LD B,0BH
+  LD C,0F6H
+  OTIR
+
+INITSIO:
+  DB 58H   ; 01 - reset Rx CRC checker
+           ;   011 - channel reset
+           ;      000 - register 0
+  DB 04H   ;      100 - register 4
+  DB 10H   ; 00 - 1x clock mode
+           ;   01 - 16 bit sync character
+           ;     00 - sync modes enable
+           ;       00 - parity enable (0=disabled)
+  DB 05H   ;      101 - register 5
+  DB 04H   ; 0 - DTR
+           ;  00 - Tx 5 bits or less per character
+           ;    0 - send break
+           ;     0 - Tx enable
+           ;      1 - SDLC/CRC-16, 1 means polynomial x^16+x^15+x^2+1
+           ;       0 - RTS
+           ;        0 - Tx CRC enable
+  DB 03H   ;      011 - register 3
+  DB 0D0H  ; 11 - Rx 8 bits per character
+           ;   0 - auto enables
+           ;    1 - enter hunt mode
+           ;     0 - Rx CRC enable
+           ;      0 - address search mode (sdlc)
+           ;       0 - sync character load inhibit
+           ;        0 - Rx enable
+  DB 06H   ;      110 - register 6
+  DB 16H   ; sync byte
+  DB 07H   ;      111 - register 7
+  DB 16H   ; sync byte
+
+The SIO can operate in asynchronous or synchronous mode. Setting the bits 2 and 3
+of WR4 to 00 selects the synchronous mode. In synchronous mode the bits 6 and 7
+of WR4 have to be set to 00 (1x clock mode).
+
+In synchronous mode, the SIO can work in three modes of character synchronization:
+Monosync, Bisync and external sync. Setting the bits 4 and 5 of WR4 to 01 selects
+the Bisync mode.
+
+The two synchronization characters are set to 16H, 16H.
+
+
+Read register
+
+D0: Receiver character available
+
+The read register 0 contains five External/status bits:
+
+D3: DCD - data carrier detect input
+D4: Sync/hunt - initially set to 1; set to 0 when character synchronization established
+D5: CTS
+D6: Transmit underrun/EOM
+D7: Break/Abort
+
+
+Read operation
+
+  LD A,10H       ; Reset External/status interrupts
+  OUT (0F6H),A
+  IN A,(0F6H)    ; test DCD
+  
+  LD A,03H     ; register 3
+  OUT (0F6H),A   
+  LD A,0D3H    ; 11 - Rx 8 bits per character
+  OUT (0F6H),A ;   0 - auto enables
+               ;    1 - enter hunt mode
+               ;     0 - Rx CRC enable
+               ;      0 - address search mode (sdlc)
+               ;       1 - sync character load inhibit
+               ;        1 - Rx enable
+  LD A,10H     ; Reset External/status interrupts
+  OUT (0F6H),A
+  IN A,(0F6H)  ; test Sync/hunt
+
+; after sync detected
+  LD A,03H       
+  OUT (0F6H),A   
+  LD A,0C3H    ; 11 - Rx 8 bits per character
+  OUT (0F6H),A ;   0 - auto enables
+               ;    0 - enter hunt mode
+               ;     0 - Rx CRC enable
+               ;      0 - address search mode (sdlc)
+               ;       1 - sync character load inhibit
+               ;        1 - Rx enable       
+  LD A,10H     ; Reset External/status interrupts
+  OUT (0F6H),A
+  IN A,(0F6H)  ; test character available, skip sync chars
+
+; after character read
+  LD A,03H       
+  OUT (0F6H),A   
+  LD A,0C9H    ; 11 - Rx 8 bits per character
+  OUT (0F6H),A ;   0 - auto enables
+               ;    0 - enter hunt mode
+               ;     1 - Rx CRC enable
+               ;      0 - address search mode (sdlc)
+               ;       0 - sync character load inhibit
+               ;        1 - Rx enable       
+
+Data format
+
+Rx disable
+Hunt phase, Rx enable
+sync 16H
+sync 16H
+data char
+blocks count
+read CRC
+read CRC
+dummy read
+wait for next char, then check CRC
+
+Rx disable
+Hunt phase, Rx enable
+sync 16H
+sync 16H
+data char
+type (0 - header, 1 - data)
+length
+length
+data, ...
+read CRC
+read CRC
+dummy read
+wait for next char, then check CRC
+
+...
+
+
+References:
+
+1. https://cs.wikipedia.org/wiki/Z80_SIO
+2. Z80 CPU Peripherals User Manual, http://www.z80.info/zip/um0081.pdf
+3. Sharp MZ-800 QD BASIC asm listing
