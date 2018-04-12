@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <title>BASIC to QD</title>
 <style>p{width:458pt} a{color:#00e}</style>
 <b>BASIC source code to QD file convertor</b><p>
@@ -32,8 +32,8 @@ LOAD"CMT:",A
 </pre>
 
 <script>
-// BASIC to QD and CMT, version 0.4
-// by Lukas Petru, March 2018
+// BASIC to QD and CMT, version 0.5
+// by Lukas Petru, April 2018
 
 // Open source under the MIT License (Expat).
 
@@ -44,16 +44,17 @@ link=b=>(sav.download=fname(),URL.revokeObjectURL(sav.href),
 
 fname=_=>nm.value.slice(0,16).replace(/[^\w !#-,@^`{-~-]/g,"!")+
  (wav.selected?".wav":cmt.selected?".mzt":ez.selected?".qdf":".mzq")
+trChars=s=>s.replace(/\\x[\da-f]{2}|[a-zäÄöÖüÜ`~|]/g,x=>x.length>1?eval(`"${x}"`):
+ String.fromCharCode(146+"e`~ tgh bxdrpcqazwsui Ökfv ü jn Üm   olÄöä y  |"
+ .indexOf(x)))
 gname=n=>(n=nm.value.replace(/[^\w !#-,@^-]/g,"").slice(0,16).toUpperCase(),
  n=n||"B",n+"\r"+" ".repeat(16)).slice(0,17)
 text=t=>(
- t=tx.value.replace(/\\x[\da-f]{2}/g,x=>eval(`"${x}"`)).split("\n")
- .map(x=>(x=x.trim(),x.length>255?err.textContent+=x+"\n  Line too long error\n":0,
- x&&x.replace(/\$[\dA-F]+|[\d ]*/,a=>(
+ t=trChars(tx.value).split("\n").map(x=>
+  (x=x.trim(),x.length>255?err.textContent+=x+"\n  Line too long error\n":0,
+  x&&x.replace(/\$[\dA-F]+|[\d ]*/,a=>(
   a=+(a[0]=="$"?"0x"+a.slice(1):a).replace(/ /g,""),a<1||a>65535?err.textContent+=x+
-  "\n  Wrong line number\n":0)),
- x.replace(/[a-z]/g,x=>String.fromCharCode(146+
-  "e   tgh bxdrpcqazwsui  kfv   jn  m   ol    y".indexOf(x)))))
+  "\n  Wrong line number\n":0)),x))
  .filter(x=>x).join("\r")+"\r\r",
  t.length>33000?err.textContent="File too large error":0,
  t)

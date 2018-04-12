@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<title>LIST</title>
+<b>Program LIST printer for Sharp MZ-800 (1Z-016) or MZ-700 (1Z-013B) BASIC
+interpreter</b><p>
+<select onchange=bf&&list(bf)><option id=mz8>MZ-800<option>MZ-700
+</select><input type=file style=margin-left:10pt onchange=load(files[0])>
+<p id=hl>Select a file of type .mzt or .mzf that contains a program in BASIC
+<pre id=ou></pre>
+<script>
+// Program LIST printer for BASIC interpreter 1Z-016 and 1Z-013B, version 0.3
+// April 2018
+// by Lukas Petru
+
+// Open source under the MIT License (Expat).
+
+// MS Edge has a bug in toPrecision function that can lead to numerical errors.
+// I recommend using Google Chrome to run this tool.
+
+bf=0
+gtable=s=>s.replace(/!/g,"|||").split("|")
+tb7=[
+"GOTO|GOSUB||RUN|RETURN|RESTORE|RESUME|LIST||DELETE|RENUM|AUTO||FOR|NEXT|PRINT|\
+|INPUT||IF|DATA|READ|DIM|REM|END|STOP|CONT|CLS||ON|LET|NEW|POKE|OFF|MODE|SKIP|\
+PLOT|LINE|RLINE|MOVE|RMOVE|TRON|TROFF|INP#||GET|PCOLOR|PHOME|HSET|GPRINT|KEY|\
+AXIS|LOAD|SAVE|MERGE||CONSOLE||OUT#|CIRCLE|TEST|PAGE!ERASE|ERROR||USR|BYE!DEF!!\
+|WOPEN|CLOSE|ROPEN!!!KILL!!|TO|STEP|THEN|USING!TAB|SPC!|OR|AND||><|<>|=<|<=|=>|\
+>=|=|>|<|+|-!/|*|^","|SET|RESET|COLOR!!!!!!!!!!|MUSIC|TEMPO|CURSOR|VERIFY|CLR|\
+LIMIT!!|BOOT","INT|ABS|SIN|COS|TAN|LN|EXP|SQR|RND|PEEK|ATN|SGN|LOG||PAI|RAD!!\
+EOF!!!JOY||CHR$|STR$|HEX$!!!ASC|LEN|VAL!!ERN|ERL|SIZE!||LEFT$|RIGHT$|MID$!!||\
+TI$!FN"]
+tb8=[
+"GOTO|GOSUB||RUN|RETURN|RESTORE|RESUME|LIST||DELETE|RENUM|AUTO|EDIT|FOR|NEXT|\
+PRINT||INPUT||IF|DATA|READ|DIM|REM|END|STOP|CONT|CLS||ON|LET|NEW|POKE|OFF|PMODE\
+|PSKIP|PLOT|PLINE|RLINE|PMOVE|RMOVE|TRON|TROFF|INP@|DEFAULT|GET|PCOLOR|PHOME|\
+HSET|GPRINT|KEY|AXIS|LOAD|SAVE|MERGE|CHAIN|CONSOLE|SEARCH|OUT@|PCIRCLE|PTEST|\
+PAGE|WAIT|SWAP||ERROR|ELSE|USR|BYE!DEF!LABEL!|WOPEN|CLOSE|ROPEN|XOPEN!|DIR!\
+RENAME|KILL|LOCK|UNLOCK|INIT!|TO|STEP|THEN|USING||ALL|TAB|SPC!XOR|OR|AND|NOT|><\
+|<>|=<|<=|=>|>=|=|>|<|+|-|}|MOD|/|*|^","!!!|SOUND||NOISE|BEEP!COLOR||SET|RESET|\
+LINE|BLINE|PAL|CIRCLE|BOX|PAINT|POSITION|PATTERN|HCOPY!|SYMBOL||MUSIC|TEMPO|\
+CURSOR|VERIFY|CLR|LIMIT!!|BOOT","INT|ABS|SIN|COS|TAN|LN|EXP|SQR|RND|PEEK|ATN|\
+SGN|LOG|FRAC|PAI|RAD!!!!|STICK|STRIG!CHR$|STR$|HEX$!!SPACE$!ASC|LEN|VAL!!ERN|\
+ERL|SIZE|CSRH|CSRV|POSH|POSV|LEFT$|RIGHT$|MID$!!||TI$|POINT|EOF|FN"]
+
+hex=x=>(x<16?0:"")+x.toString(16)
+pnum=n=>!n?0:n<1e-8||n>=1e8-.5?n.toExponential().toUpperCase():
+ /^[1-9][^.]*(\..*[1-9])?|\..*[1-9]/.exec((+n.toPrecision(8)).toFixed(15))[0]
+ptxt=(b,i,k,a,e,s)=>{
+ for(s=(b[2]|b[3]<<8)+" ",e=0,i=4;k=b[i];i++){
+  k==0x3a&&e<2&&(e=0,b[i+1]==39&&m8||b[i+1]==0xc2?k=b[++i]:0)
+  if(!e&&k==0x94){e++,s+="DATA";continue}
+  if(!e&&k==0x97){e++,s+="REM";continue}
+  !e&&k==39?e=1:
+  k==34?e^=2:0
+  a=e?1:k>253?(i++,-1):k==228?(k=255,1):k>127?-1:k>31||k<11?1:k==21?6:k==11?2:3
+  s+=a<0?tb[k<254?0:k<255?1:2][b[i]-128]||"":
+   a==2?b[++i]|b[++i]<<8:
+   a==3?"$"+(b[++i]|b[++i]<<8).toString(16).toUpperCase():
+   a==6?pnum(!b[i+1]?(i+=5,0):
+    2**(b[++i]-160)*(((128|b[++i])<<24|b[++i]<<16|b[++i]<<8|b[++i])>>>0)):
+   (a="e`~ tgh bxdrpcqazwsui Ökfv ü jn Üm   olÄöä y  |"[k-146],
+    a>" "?a:k<32||k>95&&k<128||k>195?"\\x"+hex(k):String.fromCharCode(k))
+ }
+ return s
+}
+
+list=(b,c,i,l,s)=>{
+ tb=((m8=mz8.selected)?tb8:tb7).map(gtable)
+ for(s="",i=l=128;l;i+=l)
+  l=b[i]|b[i+1]<<8,c=[...b.slice(i,i+(l||2))],l?s+=ptxt(c)+"\n":0
+ hl.hidden=1,ou.textContent=s
+}
+dump=b=>{b=new Uint8Array(b)
+ b.length<30000&&(b[0]==2||b[0]==5)&&(b[18]|b[19]<<8)+128<=b.length?
+ list(bf=b):
+ alert(`Incorrect file format${b[0]!=2&&b[0]!=5?` (type byte=${b[0]})`:""
+ }. Please select a Sharp MZ BASIC file.`)
+}
+load=(f,r)=>{(r=new FileReader).readAsArrayBuffer(f),r.onload=_=>dump(r.result)}
+</script>
