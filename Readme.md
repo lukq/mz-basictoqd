@@ -1,6 +1,8 @@
 This application transforms a BASIC program text for Sharp MZ-800 computer into a data file on a Quick Disk image or on a cassette tape. It can be used to easily input a large program into an emulator of the MZ-800 computer. It works also with 
 Quick Disk BASIC version 5Z008 for MZ-700.
 
+A program to LIST a BASIC program from a .mzf file is also included.
+
 ## Transferring the BASIC program text
 
 Open the BASIC to QD application. The text area is prefilled with a short demonstration program. You can use it to test that the transfer works correctly, or you can replace it with your own program. Choose the emulator that you want to use in the combo box below the text area. Click the Save button/link. A data file in the requested format will be saved to your computer.
