@@ -58,7 +58,8 @@ ptxt=(b,i,k,a,e,s)=>{
    a==6?pnum(!b[i+1]?(i+=5,0):
     2**(b[++i]-160)*(((128|b[++i])<<24|b[++i]<<16|b[++i]<<8|b[++i])>>>0)):
    (a="e`~ tgh bxdrpcqazwsui Ökfv ü jn Üm   olÄöä y  |"[k-146],
-    a>" "?a:k<32||k>95&&k<128||k>195?"\\x"+hex(k):String.fromCharCode(k))
+    a>" "?a:k>16&&k<23?"\u2357\u2350\u2348\u2347\u24bd\u24b8"[k-17]:
+    k<32||k>95&&k<160||k>195?"\\x"+hex(k):String.fromCharCode(k))
  }
  return s
 }
